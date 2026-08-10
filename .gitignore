@@ -1,0 +1,105 @@
+# ==========================================
+# 기억하지 (KIEOKHAJI) 프로젝트 .gitignore
+# ==========================================
+
+# 1. Python runtime & Virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+ENV/
+
+# 2. IDE / OS configuration files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 3. Environment Secrets
+.env
+.env.*
+secrets.json
+
+# 4. Large Datasets and Private Clinical Data (CRITICAL for Healthcare Security)
+data/
+# Exclude large demo videos
+*.mp4
+research/ClinicalDemogData_COFL.xlsx
+*.csv
+*.xlsx
+*.xls
+!MOCA/market_whitelist.txt
+
+# 5. Large Model Weights (Except deployment model)
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.hdf5
+*.keras
+*.joblib
+# Keep the final deployment model and metadata in git
+!MOCA/models/gait_daily_clinical_3feat.joblib
+!MOCA/models/gait_daily_clinical_3feat_metadata.json
+!MOCA/models/waist_sensor_range_loss_calibration.json
+
+# 6. Mobile Platform build outputs & caches
+node_modules/
+mobile/react_native_app/.expo/
+mobile/react_native_app/.expo-home/
+mobile/react_native_app/npm-debug.log*
+mobile/react_native_app/yarn-debug.log*
+mobile/react_native_app/yarn-error.log*
+mobile/native_android/.gradle/
+mobile/native_android/build/
+mobile/native_android/local.properties
+mobile/native_android/.cxx/
+mobile/native_android/app/build/
+*.apk
+*.aar
+*.jar
+
+# 7. Demo Media (Large MP4 videos are excluded, links provided in README)
+assets/*.mp4
+750홍보.mp4
+기억하지 보행검사튜토리얼.mp4
+기억하지 홍보영상.mp4
+
+# 8. Temporary rendering & Log outputs
+*.log
+app_log.txt
+server.log
+server.err.log
+tmp_render/
+docx_render_check/
+MOCA/tmp_render/
+*.tmp
+~$*
+cookies.txt
+MOCA/cookies.txt
+page_*.png
+references.md
+generate_doc.py
+generate_tts.py
+clock_cnn_train.py
+cube_cnn_train_v2.py
+cube_cnn_inference_v2.py
+clock_cnn_inference.py
+
+# 9. Research execution temporary files
+research/daily_gait_20s/analysis_outputs/
+research/lab_gait_10s/01_preprocessing/
+research/lab_gait_10s/02_model/
+!research/lab_gait_10s/02_model/final_motor_domain4_labwalks10_logistic_C0p5.joblib
+!research/lab_gait_10s/02_model/final_motor_domain4_labwalks10_logistic_C0p5_metadata.json
+research/lab_gait_10s/03_validation/domain_*.csv
+research/lab_gait_10s/03_validation/domain4_*.csv
+external_data/
+보행SAMPLE/
+gaitsensorapp/

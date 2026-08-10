@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: moca-demo
+    runtime: python
+    rootDir: MOCA
+    pythonVersion: "3.10.6"
+    buildCommand: cd MOCA && pip install -r requirements.txt
+    startCommand: cd MOCA && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_PASSWORD
+        sync: false

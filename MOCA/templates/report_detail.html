@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+{% block header %}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/exercise.css">
+{% endblock %}
+
+{% block content %}
+<div class="exercise-screen report-detail-screen">
+  <header style="background: #eef5ff; border-bottom: 1px solid #d0e2ff; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; width: 100%;">
+    <a href="{{ back_url or '/main_home' }}" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: #005da7; font-size: 18px; font-weight: 900;" aria-label="뒤로 가기">
+      <span style="font-size: 22px; line-height: 1;">←</span>
+      <span>뒤로</span>
+    </a>
+    <h1 style="font-size: 24px; font-weight: 900; color: #005da7; margin: 0; text-align: center; flex: 1; letter-spacing: -0.5px;">상세 리포트</h1>
+    <span style="width: 60px;" aria-hidden="true"></span>
+  </header>
+
+  <main class="exercise-page report-page">
+    {% set cog_score_val = (((cognitive.score.final_score / 30.0) * 100) | int) if (cognitive and cognitive.score) else 0 %}
+    {% set gait_score_val = (((1.0 - gait.probability) * 100) | int) if gait else 0 %}
+    {% set total_score_val = ((cog_score_val + gait_score_val) / 2) | int %}
+
+    <section class="report-score-hero">
+      <div>
+        <p>종합 건강점수</p>
+        <strong>{{ total_score_val }}점</strong>
+        {% set star_count = (total_score_val / 20) | int %}
+        <span aria-label="{{ star_count }}점" style="color: #f59e0b;">{{ '★' * star_count }}{{ '☆' * (5 - star_count) }}</span>
+      </div>
+      <div>
+        <p>지난주 대비</p>
+        <strong>▲ +{{ exercise.report.score_delta }}</strong>
+      </div>
+    </section>
+
+    <section class="report-chart-card">
+      <div class="report-section-title">
+        <strong>점수 변화</strong>
+        <span>최근 7일</span>
+        <em>오늘 {{ total_score_val }}점</em>
+      </div>
+      <div class="score-chart" aria-label="최근 7일 점수 변화 그래프">
+        <span class="chart-line"></span>
+        <span class="chart-dot"></span>
+      </div>
+    </section>
+
+    <section class="report-metric-grid">
+      <article class="metric-card blue">
+        <span>🧠</span>
+        <strong>인지 기능</strong>
+        <p>{{ cog_score_val }}점 <small>▲{{ exercise.report.cognitive_delta }}</small></p>
+        <div><span style="width: {{ cog_score_val }}%"></span></div>
+      </article>
+      <article class="metric-card green">
+        <span>🚶</span>
+        <strong>보행 기능</strong>
+        <p>{{ gait_score_val }}점 <small>▲{{ exercise.report.gait_delta }}</small></p>
+        <div><span style="width: {{ gait_score_val }}%"></span></div>
+      </article>
+      <article class="metric-card red">
+        <span>⏱</span>
+        <strong>운동량</strong>
+        <p>{{ exercise.report.exercise_minutes }}분</p>
+        <div><span style="width: {{ (exercise.report.exercise_minutes / exercise.report.exercise_goal_minutes * 100) | int }}%"></span></div>
+        <small>목표 {{ exercise.report.exercise_goal_minutes }}분</small>
+      </article>
+    </section>
+
+    <!-- 인지/신체 검사 결과 리포트 섹션 추가 -->
+    <div id="report-tabs" style="margin-top: 30px; scroll-margin-top: 20px;">
+      <nav class="final-tabs" aria-label="결과 선택" style="margin-bottom: 20px;">
+        <button type="button" class="{% if panel != 'gait' %}is-active{% endif %}" data-panel="cognitive" style="flex: 1; padding: 14px; font-weight: bold; border: none; background: #f7fafc; border-bottom: 2px solid #e2e8f0; color: #718096; cursor: pointer;">
+          인지점수 확인
+        </button>
+        <button type="button" class="{% if panel == 'gait' %}is-active{% endif %}" data-panel="gait" style="flex: 1; padding: 14px; font-weight: bold; border: none; background: #f7fafc; border-bottom: 2px solid #e2e8f0; color: #718096; cursor: pointer;">
+          신체점수 확인
+        </button>
+      </nav>
+
+      <section class="final-panel" id="cognitivePanel" {% if panel == 'gait' %}hidden{% endif %}>
+        {% if cognitive %}
+          {% set score = cognitive.score %}
+          <div class="final-score-card {% if score.mci.label == 0 %}is-normal{% else %}is-risk{% endif %}">
+            <span>{{ cognitive.version }}</span>
+            <strong>{{ score.final_score }}<small>/30</small></strong>
+            <em>{{ score.mci.interpretation }}</em>
+          </div>
+
+          {% set section_info = [
+            ('trail_making', '길 만들기', 1),
+            ('drawing', '시공간/실행', 4),
+            ('naming', '이름대기', 3),
+            ('memory', '기억', 5),
+            ('attention', '주의력', 6),
+            ('language', '언어', 3),
+            ('abstraction', '추상력', 2),
+            ('orientation', '지남력', 6)
+          ] %}
+          <div class="final-card" style="background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px;">
+            <h3>영역별 점수</h3>
+            {% for key, label, max_score in section_info %}
+              {% set got = score.sections.get(key, 0) %}
+              <div class="final-score-row {% if got < max_score %}has-loss{% endif %}">
+                <span {% if got < max_score %}style="color: #e53e3e; font-weight: bold;"{% endif %}>{{ label }}</span>
+                <div><i style="width: {{ (got / max_score * 100) | int }}%"></i></div>
+                <strong {% if got < max_score %}style="color: #e53e3e;"{% endif %}>{{ got }}/{{ max_score }}</strong>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="final-card" style="background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px;">
+            <h3 onclick="toggleResponseRecord()" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; margin: 0;">
+              <span>내 응답 기록</span>
+              <span id="responseToggleArrow" style="font-size: 16px; transition: transform 0.2s;">▼</span>
+            </h3>
+            <div class="answer-grid" id="responseAnswerGrid" style="display: none; margin-top: 16px;">
+              {% set key_map = {
+                'animal1': '동물 이름 말하기 (1회차)',
+                'animal2': '동물 이름 말하기 (2회차)',
+                'animal3': '동물 이름 말하기 (3회차)',
+                'immediate1': '단어 기억하기 (1회차)',
+                'immediate2': '단어 기억하기 (2회차)',
+                'forward': '숫자 말하기 (바로)',
+                'backward': '숫자 말하기 (거꾸로)',
+                'serial7': '계산하기',
+                'sentence1': '따라 말하기 (1회차)',
+                'sentence2': '따라 말하기 (2회차)',
+                'fluency': '단어 말하기',
+                'delayed_recall': '단어 기억하기 (3회차)',
+                'year': '날짜 말하기 (년도)',
+                'month': '날짜 말하기 (월)',
+                'day': '날짜 말하기 (일)',
+                'weekday': '날짜 말하기 (요일)',
+                'place': '장소 말하기 (동네)',
+                'sigungu': '장소 말하기 (시/군/구)'
+              } %}
+              {% for key, value in cognitive.raw.items() %}
+                {% if value and key.endswith('_stt') %}
+                  {% set clean_key = key.replace('_stt', '') %}
+                  <div>
+                    <span>{{ key_map.get(clean_key, clean_key) }}</span>
+                    <strong>{{ value }}</strong>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="final-empty" style="text-align: center; padding: 30px; color: #a0aec0;">아직 인지평가 결과가 없습니다.</div>
+        {% endif %}
+      </section>
+
+      <section class="final-panel" id="gaitPanel" {% if panel != 'gait' %}hidden{% endif %}>
+        {% if gait %}
+          <div class="final-score-card {% if gait.prediction %}is-risk{% else %}is-normal{% endif %}">
+            <span>보행 모델</span>
+            <strong>{{ '%.1f'|format(gait.probability * 100) }}<small>%</small></strong>
+            <em>{{ gait.label }}</em>
+          </div>
+
+          <!-- 아바타 보행 스테이지 & 결과 카드 (gait_avatar.html 동일 화면) -->
+          <div style="margin-top: 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="avatar-stage-wrap">
+              <div class="walk-stage avatar-full-stage"
+                   aria-label="보행 아바타"
+                   style="--walk-speed: {{ gait.visual.animation_sec|default(1.0) }}s; --sway: {{ gait.visual.sway_px|default(8) }}px; --bob: {{ gait.visual.bob_px|default(6) }}px; --trunk-rot: {{ gait.visual.rotation_deg|default(10) }}deg; --stride: {{ gait.visual.stride_px|default(36) }}px;">
+                <div class="walk-grid"></div>
+                <div class="motion-road">
+                  {% for i in range(9) %}<span></span>{% endfor %}
+                </div>
+                <div class="walk-depth depth-a"></div>
+                <div class="walk-depth depth-b"></div>
+                <div class="walk-floor"></div>
+                <div class="walk-shadow"></div>
+                <svg class="walk-figure reference-figure" viewBox="0 0 140 220" aria-hidden="true">
+                  <g class="figure-body">
+                    <circle class="figure-head" cx="70" cy="24" r="19"></circle>
+                    <rect class="figure-neck" x="63" y="40" width="14" height="16" rx="7"></rect>
+                    <rect class="figure-torso" x="50" y="55" width="40" height="70" rx="17"></rect>
+                    <rect class="figure-pelvis" x="44" y="118" width="52" height="22" rx="12"></rect>
+                  </g>
+                  <g class="figure-arm left" transform="translate(45 64)">
+                    <line x1="0" y1="0" x2="-11" y2="61"></line>
+                    <animateTransform attributeName="transform" type="rotate" values="16 0 0;-12 0 0;16 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"></animateTransform>
+                  </g>
+                  <g class="figure-arm right" transform="translate(95 64)">
+                    <line x1="0" y1="0" x2="11" y2="61"></line>
+                    <animateTransform attributeName="transform" type="rotate" values="-12 0 0;16 0 0;-12 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"></animateTransform>
+                  </g>
+                  <g class="figure-leg left" transform="translate(58 136)">
+                    <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 4;0 -2;0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <animateTransform attributeName="transform" type="rotate" values="-5 0 0;-1 0 0;5 0 0;1 0 0;-5 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <line class="figure-thigh" x1="0" y1="0" x2="0" y2="48"></line>
+                    <g class="figure-shin" transform="translate(0 48)">
+                      <animateTransform attributeName="transform" type="rotate" values="5 0 0;-8 0 0;3 0 0;-5 0 0;5 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                      <line x1="0" y1="0" x2="0" y2="52"></line>
+                      <ellipse class="figure-foot" cx="0" cy="56" rx="8" ry="5"></ellipse>
+                    </g>
+                  </g>
+                  <g class="figure-leg right" transform="translate(82 136)">
+                    <animateTransform attributeName="transform" type="translate" values="0 4;0 -2;0 0;0 -3;0 4" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <animateTransform attributeName="transform" type="rotate" values="5 0 0;1 0 0;-5 0 0;-1 0 0;5 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <line class="figure-thigh" x1="0" y1="0" x2="0" y2="48"></line>
+                    <g class="figure-shin" transform="translate(0 48)">
+                      <animateTransform attributeName="transform" type="rotate" values="3 0 0;-5 0 0;5 0 0;-8 0 0;3 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                      <line x1="0" y1="0" x2="0" y2="52"></line>
+                      <ellipse class="figure-foot" cx="0" cy="56" rx="8" ry="5"></ellipse>
+                    </g>
+                  </g>
+                </svg>
+                <svg class="walk-figure user-figure" viewBox="0 0 140 220" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="userTorsoGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#69E6FF"></stop>
+                      <stop offset="100%" stop-color="#2477CB"></stop>
+                    </linearGradient>
+                    <linearGradient id="userHeadGradient" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#2E7DD7"></stop>
+                      <stop offset="100%" stop-color="#8BD5F8"></stop>
+                    </linearGradient>
+                  </defs>
+                  <g class="figure-body">
+                    <circle class="figure-head" cx="70" cy="24" r="21"></circle>
+                    <rect class="figure-neck" x="62" y="42" width="16" height="17" rx="8"></rect>
+                    <rect class="figure-torso" x="48" y="56" width="44" height="72" rx="18"></rect>
+                    <rect class="figure-pelvis" x="42" y="121" width="56" height="24" rx="13"></rx>
+                  </g>
+                  <g class="figure-arm left" transform="translate(45 66)">
+                    <line x1="0" y1="0" x2="-13" y2="66"></line>
+                    <animateTransform attributeName="transform" type="rotate" values="20 0 0;5 0 0;-22 0 0;5 0 0;20 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                  </g>
+                  <g class="figure-arm right" transform="translate(95 66)">
+                    <line x1="0" y1="0" x2="13" y2="66"></line>
+                    <animateTransform attributeName="transform" type="rotate" values="-22 0 0;5 0 0;20 0 0;5 0 0;-22 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                  </g>
+                  <g class="figure-leg left" transform="translate(57 141)">
+                    <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 6;0 -2;0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <animateTransform attributeName="transform" type="rotate" values="-6 0 0;-2 0 0;7 0 0;2 0 0;-6 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <line class="figure-thigh" x1="0" y1="0" x2="0" y2="50"></line>
+                    <g class="figure-shin" transform="translate(0 50)">
+                      <animateTransform attributeName="transform" type="rotate" values="5 0 0;-7 0 0;3 0 0;-5 0 0;5 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                      <line x1="0" y1="0" x2="0" y2="54"></line>
+                      <ellipse class="figure-foot" cx="0" cy="58" rx="10" ry="6"></ellipse>
+                    </g>
+                  </g>
+                  <g class="figure-leg right" transform="translate(83 141)">
+                    <animateTransform attributeName="transform" type="translate" values="0 6;0 -2;0 0;0 -4;0 6" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <animateTransform attributeName="transform" type="rotate" values="7 0 0;2 0 0;-6 0 0;-2 0 0;7 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                    <line class="figure-thigh" x1="0" y1="0" x2="0" y2="50"></line>
+                    <g class="figure-shin" transform="translate(0 50)">
+                      <animateTransform attributeName="transform" type="rotate" values="3 0 0;-5 0 0;5 0 0;-7 0 0;3 0 0" dur="{{ gait.visual.animation_sec|default(1.0) }}s" repeatCount="indefinite" additive="sum" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1"></animateTransform>
+                      <line x1="0" y1="0" x2="0" y2="54"></line>
+                      <ellipse class="figure-foot" cx="0" cy="58" rx="10" ry="6"></ellipse>
+                    </g>
+                  </g>
+                </svg>
+                <div class="walk-axis axis-v">V</div>
+                <div class="walk-axis axis-ml">ML</div>
+                <div class="motion-label label-user">사용자</div>
+                <div class="motion-label label-ref">정상 reference</div>
+              </div>
+            </div>
+
+            <section class="avatar-overlay-card">
+              <div>
+                <span>예측 확률</span>
+                <strong>{{ '%.1f'|format(gait.probability * 100) }}%</strong>
+              </div>
+              <div>
+                <span>선택 구간</span>
+                <strong>{{ gait.window.start_offset_sec|default(0) }}초부터 10초</strong>
+              </div>
+            </section>
+
+          </div>
+
+          <div class="final-card" style="background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px;">
+            <h3>보행 피처 확인</h3>
+            <ul class="final-list">
+              {% for item in gait.insights %}
+                <li class="{% if item.is_problem %}is-risk{% endif %}">
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ item.message }} · {{ '%.3f'|format(item.value) }}{{ item.unit }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="final-card" style="background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px;">
+            <h3>보행 판단 근거</h3>
+            <div class="pengteu-explain-box">
+              <img src="/pengt.png" alt="" aria-hidden="true">
+              <p>펭트가 보기엔 이 표는 이번 보행 결과를 설명하는 3개 지표가 주의 쪽인지, 안정 쪽인지 쉽게 정리한 내용이에요.</p>
+            </div>
+            <p class="xai-note" style="font-size: 12px; color: #718096; margin-bottom: 12px;">최종 보행 모델은 수직 추진/충격 크기, 수직 움직임 변동성, 보행 리듬 변동성 3개 지표를 함께 봅니다.</p>
+            {% for item in gait.explainability %}
+              <div class="xai-row {{ item.direction }}">
+                <span>{{ item.label }}</span>
+                <div><i style="width: {{ item.width }}%"></i></div>
+                <strong>{% if item.direction == 'risk' %}주의 신호{% else %}안정 신호{% endif %}</strong>
+              </div>
+            {% endfor %}
+            <button class="pengteu-explain-btn" type="button" data-pengteu-prompt="보행 판단 근거를 펭트가 쉽게 설명해줘">펭트에게 설명 듣기</button>
+          </div>
+
+          <div class="final-card spectrum-card" style="background: #ffffff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px;">
+            <h3>스펙트럼 설명</h3>
+            <div class="pengteu-explain-box">
+              <img src="/pengt.png" alt="" aria-hidden="true">
+              <p>스펙트럼은 허리 가속도 신호의 리듬과 주파수 흐름을 그림처럼 보여주는 보조 자료예요. 모델 판단은 최종 3개 보행 피처를 기준으로 해요.</p>
+            </div>
+            <div class="spectrum-preview">
+              <canvas id="gaitSpectrumCanvas" width="560" height="160" aria-label="보행 수직 가속도 스펙트로그램"></canvas>
+              <p id="gaitSpectrumEmpty" hidden>스펙트럼을 표시할 보행 신호가 부족합니다.</p>
+            </div>
+            <p class="xai-note" style="font-size: 12px; color: #718096; margin-top: 12px;">밝은 부분은 해당 시간대에 특정 보행 리듬이 더 강하게 나타난 구간입니다.</p>
+            <button class="pengteu-explain-btn" type="button" data-pengteu-prompt="스펙트럼 설명을 펭트가 쉽게 설명해줘">펭트에게 설명 듣기</button>
+          </div>
+        {% else %}
+          <div class="final-empty" style="text-align: center; padding: 30px; color: #a0aec0;">아직 신체평가 결과가 없습니다.</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <!-- Spacer to prevent bottom nav from covering content -->
+    <div style="height: 85px;"></div>
+
+    <!-- Unified Bottom Navigation Bar -->
+    <nav style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 80px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-around; z-index: 100; box-shadow: 0 -4px 16px rgba(0,0,0,0.06); box-sizing: border-box; padding: 6px 16px;">
+      <a href="/main_home" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #718096; font-size: 15px; font-weight: 800; gap: 3px;">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span>홈</span>
+      </a>
+
+      <a href="/report/detail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #005da7; font-size: 15px; font-weight: 900; gap: 3px;">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-2.5l-1.5-4.5L11 15l-1.5-3L8.5 13H7v-2h2.5l1.5 3 2-6.5 1.5 4.5H17v2z"/></svg>
+        <span>건강기록</span>
+      </a>
+
+      <a href="/mypage" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #718096; font-size: 15px; font-weight: 800; gap: 3px;">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>내정보</span>
+      </a>
+    </nav>
+  </main>
+</div>
+
+<script>
+  // 탭 클릭 전환
+  const tabs = document.querySelectorAll('#report-tabs .final-tabs button');
+  const cognitivePanel = document.getElementById('cognitivePanel');
+  const gaitPanel = document.getElementById('gaitPanel');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const isGait = tab.dataset.panel === 'gait';
+      tabs.forEach((item) => {
+        item.classList.toggle('is-active', item === tab);
+        if (item === tab) {
+          item.style.color = '#005da7';
+          item.style.borderBottom = '3px solid #005da7';
+        } else {
+          item.style.color = '#718096';
+          item.style.borderBottom = '2px solid #e2e8f0';
+        }
+      });
+      cognitivePanel.hidden = isGait;
+      gaitPanel.hidden = !isGait;
+    });
+  });
+
+  // 초기 로드 시 active 스타일 지정
+  tabs.forEach((tab) => {
+    const isActive = tab.classList.contains('is-active');
+    if (isActive) {
+      tab.style.color = '#005da7';
+      tab.style.borderBottom = '3px solid #005da7';
+    }
+  });
+
+  // 내 응답 기록 토글 기능
+  function toggleResponseRecord() {
+    const grid = document.getElementById('responseAnswerGrid');
+    const arrow = document.getElementById('responseToggleArrow');
+    if (grid.style.display === 'none') {
+      grid.style.display = 'grid';
+      arrow.textContent = '▲';
+    } else {
+      grid.style.display = 'none';
+      arrow.textContent = '▼';
+    }
+  }
+
+  const gaitSignalPreview = {% if gait %}{{ gait.signal_preview|default(none)|tojson }}{% else %}null{% endif %};
+  const spectrumCanvas = document.getElementById('gaitSpectrumCanvas');
+  const spectrumEmpty = document.getElementById('gaitSpectrumEmpty');
+
+  function spectrumColor(value) {
+    const v = Math.max(0, Math.min(1, Number(value) || 0));
+    const stops = [
+      [12, 31, 55],
+      [22, 107, 168],
+      [53, 184, 166],
+      [247, 221, 114],
+    ];
+    const scaled = v * (stops.length - 1);
+    const idx = Math.min(stops.length - 2, Math.floor(scaled));
+    const t = scaled - idx;
+    const a = stops[idx];
+    const b = stops[idx + 1];
+    const r = Math.round(a[0] + (b[0] - a[0]) * t);
+    const g = Math.round(a[1] + (b[1] - a[1]) * t);
+    const blue = Math.round(a[2] + (b[2] - a[2]) * t);
+    return `rgb(${r}, ${g}, ${blue})`;
+  }
+
+  function buildSpectrumFromPreview(preview) {
+    const samples = preview && Array.isArray(preview.v) ? preview.v.map(Number).filter(Number.isFinite) : [];
+    if (samples.length < 16) return [];
+    const n = Math.min(32, samples.length);
+    const hop = Math.max(4, Math.floor(n / 4));
+    const rows = Math.floor(n / 2) + 1;
+    const matrix = Array.from({ length: rows }, () => []);
+    for (let start = 0; start + n <= samples.length; start += hop) {
+      const segment = samples.slice(start, start + n);
+      const mean = segment.reduce((sum, value) => sum + value, 0) / n;
+      for (let k = 0; k < rows; k += 1) {
+        let real = 0;
+        let imag = 0;
+        for (let i = 0; i < n; i += 1) {
+          const centered = segment[i] - mean;
+          const win = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / Math.max(1, n - 1));
+          const angle = (2 * Math.PI * k * i) / n;
+          real += centered * win * Math.cos(angle);
+          imag -= centered * win * Math.sin(angle);
+        }
+        matrix[k].push(Math.log1p(real * real + imag * imag));
+      }
+    }
+    const maxValue = Math.max(...matrix.flat(), 1e-6);
+    return matrix.map((row) => row.map((value) => Math.max(0, Math.min(1, value / maxValue))));
+  }
+
+  function drawGaitSpectrum() {
+    if (!spectrumCanvas) return;
+    const spec = gaitSignalPreview && gaitSignalPreview.spectrogram;
+    const power = spec && Array.isArray(spec.power) ? spec.power : buildSpectrumFromPreview(gaitSignalPreview);
+    const rows = power.length;
+    const cols = rows ? power[0].length : 0;
+    if (!rows || !cols) {
+      spectrumCanvas.hidden = true;
+      if (spectrumEmpty) spectrumEmpty.hidden = false;
+      return;
+    }
+
+    const ctx = spectrumCanvas.getContext('2d');
+    const width = spectrumCanvas.width;
+    const height = spectrumCanvas.height;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#0c2037';
+    ctx.fillRect(0, 0, width, height);
+
+    const cellW = width / cols;
+    const cellH = height / rows;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        ctx.fillStyle = spectrumColor(power[r][c]);
+        ctx.fillRect(c * cellW, height - (r + 1) * cellH, Math.ceil(cellW) + 1, Math.ceil(cellH) + 1);
+      }
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.fillRect(0, height - 1, width, 1);
+    ctx.fillRect(0, 0, 1, height);
+  }
+
+  drawGaitSpectrum();
+</script>
+{% endblock %}

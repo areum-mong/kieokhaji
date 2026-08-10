@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% block header %}{% endblock %}
+{% block extra_head %}
+<style>
+  /* 4 Quadrants Grid */
+  .care-quadrant-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .quadrant-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    border-radius: 18px;
+    border: 2px solid #eef2f6;
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s ease;
+  }
+  .quadrant-card.active {
+    border-color: #005da7;
+    background-color: rgba(0, 93, 167, 0.05);
+    box-shadow: 0 6px 16px rgba(0, 93, 167, 0.1);
+  }
+  .quadrant-card .type-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #a0aec0;
+  }
+  .quadrant-card.active .type-name {
+    color: #005da7;
+    font-size: 22px;
+  }
+  .quadrant-card .type-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #cbd5e0;
+    margin-top: 4px;
+    word-break: keep-all;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .quadrant-card.active .type-label {
+    color: #005da7;
+  }
+
+  /* Summary Box */
+  .care-summary-box {
+    background: #eef4ff;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    border: 1px solid #dbe5ff;
+  }
+  .care-summary-text {
+    font-size: 17px;
+    color: #021d33;
+    line-height: 1.5;
+    font-weight: 700;
+    text-align: center;
+    word-break: keep-all;
+    margin: 0;
+  }
+
+  /* Score Gauges */
+  .gauge-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .gauge-card {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid #eef2f6;
+    padding: 16px 20px 48px 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  }
+  .gauge-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .gauge-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gauge-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #4a5568;
+  }
+  .gauge-score {
+    font-size: 24px;
+    font-weight: 900;
+  }
+  .gauge-bar-bg {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e0;
+    border-radius: 999px;
+    height: 14px;
+    position: relative;
+  }
+  .gauge-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="final-screen">
+  <header class="design-header compact">
+    <a class="design-back-btn gait-back-link" href="/" aria-label="처음으로">
+      <span>‹</span>
+      <strong>처음</strong>
+    </a>
+    <h1>최종결과</h1>
+    <span class="design-header-spacer" aria-hidden="true"></span>
+  </header>
+
+
+
+  <!-- 4 Quadrants Grid -->
+  <div class="care-quadrant-grid">
+    <!-- A 유형 -->
+    <div class="quadrant-card {% if care_type.code == 'A' %}active{% endif %}">
+      <span class="type-name">A 유형</span>
+      <span class="type-label">유지형<br><small style="font-size: 11px; opacity: 0.8; font-weight: normal;">(신체 양호 · 인지 양호)</small></span>
+    </div>
+    <!-- B 유형 -->
+    <div class="quadrant-card {% if care_type.code == 'B' %}active{% endif %}">
+      <span class="type-name">B 유형</span>
+      <span class="type-label">인지관리형<br><small style="font-size: 11px; opacity: 0.8; font-weight: normal;">(신체 저하 · 인지 양호)</small></span>
+    </div>
+    <!-- C 유형 -->
+    <div class="quadrant-card {% if care_type.code == 'C' %}active{% endif %}">
+      <span class="type-name">C 유형</span>
+      <span class="type-label">신체관리형<br><small style="font-size: 11px; opacity: 0.8; font-weight: normal;">(신체 양호 · 인지 저하)</small></span>
+    </div>
+    <!-- D 유형 -->
+    <div class="quadrant-card {% if care_type.code == 'D' %}active{% endif %}">
+      <span class="type-name">D 유형</span>
+      <span class="type-label">통합관리형<br><small style="font-size: 11px; opacity: 0.8; font-weight: normal;">(신체 저하 · 인지 저하)</small></span>
+    </div>
+  </div>
+
+  <!-- Summary Box -->
+  <div class="care-summary-box">
+    <p class="care-summary-text">{{ care_type.summary }}</p>
+  </div>
+
+  <!-- Score Gauges -->
+  <div class="gauge-container">
+    {% if cognitive %}
+      {% set cog_score_val = cognitive.score.final_score %}
+      {% set cog_score_100 = ((cog_score_val / 30.0) * 100) | int %}
+    {% else %}
+      {% set cog_score_val = 0 %}
+      {% set cog_score_100 = 0 %}
+    {% endif %}
+
+    {% if gait %}
+      {% set phys_score_100 = ((1.0 - gait.probability) * 100) | int %}
+      {% set phys_threshold_100 = ((1.0 - gait.threshold) * 100) | int %}
+    {% else %}
+      {% set phys_score_100 = 0 %}
+      {% set phys_threshold_100 = 53 %}
+    {% endif %}
+
+    {% set total_score_100 = ((cog_score_100 + phys_score_100) / 2) | int %}
+    {% set star_count = (total_score_100 / 20) | int %}
+
+    <!-- Physical Function Gauge -->
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <div class="gauge-title-wrap">
+          <svg viewBox="0 0 48 48" fill="none" style="width: 28px; height: 28px;">
+            <circle cx="24" cy="14" r="6" fill="#006b5a"/>
+            <path d="M17 24h14l5 15h-6l-3-9h-6l-3 9h-6l5-15z" fill="#006b5a"/>
+          </svg>
+          <span class="gauge-title">신체 기능</span>
+        </div>
+        <span class="gauge-score" style="color: #006b5a;">{{ phys_score_100 }}점</span>
+      </div>
+      <div class="gauge-bar-bg" style="margin-top: 14px; margin-bottom: 6px; overflow: visible;">
+        <div style="width: 100%; background: #ffffff; border-radius: 999px; height: 14px; overflow: hidden; position: relative;">
+          <div class="gauge-bar-fill" style="width: {{ phys_score_100 }}%; background: #006b5a; height: 100%;"></div>
+        </div>
+        <!-- Tick line at threshold -->
+        <div style="position: absolute; left: {{ phys_threshold_100 }}%; top: -4px; width: 3px; height: 22px; background: #e53e3e; border-radius: 2px; z-index: 2;"></div>
+        <!-- Ticks labels row -->
+        <div style="position: relative; width: 100%; height: 22px; margin-top: 10px;">
+          <span style="position: absolute; left: 0; font-size: 15px; color: #a0aec0; font-weight: 800;">0점</span>
+          <span style="position: absolute; left: {{ phys_threshold_100 }}%; transform: translateX(-50%); font-size: 15px; color: #e53e3e; font-weight: 800; white-space: nowrap; z-index: 2;">{{ phys_threshold_100 }}점 (저하 기준)</span>
+          <span style="position: absolute; right: 0; font-size: 15px; color: #a0aec0; font-weight: 800;">100점</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cognitive Function Gauge -->
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <div class="gauge-title-wrap">
+          <svg viewBox="0 0 48 48" fill="none" style="width: 28px; height: 28px;">
+            <rect x="8" y="8" width="32" height="32" rx="12" fill="rgba(0, 93, 167, 0.15)"/>
+            <path d="M16 25h5l3-8 5 15 3-7h5" stroke="#005da7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="gauge-title">인지 기능</span>
+        </div>
+        <span class="gauge-score" style="color: #005da7;">{{ cog_score_100 }}점</span>
+      </div>
+      <div class="gauge-bar-bg" style="margin-top: 14px; margin-bottom: 6px; overflow: visible;">
+        <div style="width: 100%; background: #ffffff; border-radius: 999px; height: 14px; overflow: hidden; position: relative;">
+          <div class="gauge-bar-fill" style="width: {{ cog_score_100 }}%; background: #005da7; height: 100%;"></div>
+        </div>
+        <!-- Tick line at 76.7% (23 points) -->
+        <div style="position: absolute; left: 76.7%; top: -4px; width: 3px; height: 22px; background: #e53e3e; border-radius: 2px; z-index: 2;"></div>
+        <!-- Ticks labels row -->
+        <div style="position: relative; width: 100%; height: 22px; margin-top: 10px;">
+          <span style="position: absolute; left: 0; font-size: 15px; color: #a0aec0; font-weight: 800;">0점</span>
+          <span style="position: absolute; left: 76.7%; transform: translateX(-50%); font-size: 15px; color: #e53e3e; font-weight: 800; white-space: nowrap; z-index: 2;">77점 (저하 기준)</span>
+          <span style="position: absolute; right: 0; font-size: 15px; color: #a0aec0; font-weight: 800;">100점</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 운동하러 가기 버튼 & 분석 결과 자세히 보기 버튼 (폰트 크기 대폭 확대) -->
+  <div style="text-align: center; margin-top: 30px; margin-bottom: 30px; width: 100%; display: flex; flex-direction: column; gap: 14px;">
+    <a href="/exercise/today" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 20px 32px; border-radius: 18px; font-weight: 900; font-size: 22px; color: #ffffff; background: linear-gradient(135deg, #005da7 0%, #0077d9 100%); box-shadow: 0 6px 18px rgba(0, 93, 167, 0.3); transition: all 0.2s; width: 100%; box-sizing: border-box; gap: 10px;">
+      <span>운동하러 가기</span>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+    </a>
+
+    <a href="/report/detail#report-tabs" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 18px 32px; border-radius: 18px; font-weight: 900; font-size: 22px; color: #ffffff; background: #005da7; box-shadow: 0 4px 14px rgba(0, 93, 167, 0.2); transition: all 0.2s; width: 100%; box-sizing: border-box;">
+      분석 결과 자세히 보기
+    </a>
+  </div>
+
+  <!-- Spacer to prevent bottom nav from covering content -->
+  <div style="height: 85px;"></div>
+
+  <!-- Unified Bottom Navigation Bar -->
+  <nav style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 80px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-around; z-index: 100; box-shadow: 0 -4px 16px rgba(0,0,0,0.06); box-sizing: border-box; padding: 6px 16px;">
+    <a href="/main_home" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #718096; font-size: 15px; font-weight: 800; gap: 3px;">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span>홈</span>
+    </a>
+
+    <a href="/report/detail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #005da7; font-size: 15px; font-weight: 900; gap: 3px;">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-2.5l-1.5-4.5L11 15l-1.5-3L8.5 13H7v-2h2.5l1.5 3 2-6.5 1.5 4.5H17v2z"/></svg>
+      <span>건강기록</span>
+    </a>
+
+    <a href="/mypage" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: #718096; font-size: 15px; font-weight: 800; gap: 3px;">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span>내정보</span>
+    </a>
+  </nav>
+</section>
+{% endblock %}
