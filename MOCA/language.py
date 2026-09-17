@@ -133,11 +133,23 @@ def _deduplicate_stem(words: list) -> list:
 
 
 def _validate_with_llm(words: list) -> list:
-    """화이트리스트 미등록 단어를 Claude API로 검증 (use_llm=True 시만 호출)"""
+    """화이트리스트 미등록 단어를 Claude API로 검증 (use_llm=True 시만 호출)
+
+    anthropic 패키지 자체가 설치되지 않은 환경에서도 안전하게 동작하도록
+    import를 try 블록 밖에서 먼저 시도한다. import 단계에서 실패하면
+    ImportError를 잡아 빈 리스트를 반환하고, 이후 API 인증 실패는
+    별도로 처리한다.
+    """
     if not words:
         return []
+
     try:
         import anthropic
+    except ImportError:
+        print("[경고] anthropic 패키지가 설치되지 않음 — LLM 검증을 건너뜁니다")
+        return []
+
+    try:
         client = anthropic.Anthropic()
         word_list = ", ".join(words)
         msg = client.messages.create(
